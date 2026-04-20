@@ -11,38 +11,36 @@
         
         /* Legend Styling */
         .info.legend {
-            background: white;
-            padding: 10px 14px;
-            font-size: 14px;
-            line-height: 24px;
-            color: #333;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            border-radius: 5px;
-            border: 2px solid #2c3e50;
+            background: white; padding: 10px 14px;
+            font-size: 14px; line-height: 24px;
+            color: #333; box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px; border: 2px solid #2c3e50;
         }
         .info.legend i {
             width: 16px; height: 16px; float: left;
             margin-right: 8px; opacity: 0.9;
             border-radius: 50%; margin-top: 4px;
         }
+        
+        /* Removes background from the custom emoji icon */
+        .custom-siren { background: none; border: none; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
-        // 1. Initialize Map with a safe default center for Tarlac
-        // If anything fails, you will at least see the map!
+        // 1. Initialize Map
         var map = L.map('map').setView([15.48, 120.59], 10);
         
+        // Using the Colorful Standard Map
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-}).addTo(map);
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-        // 2. Create a FeatureGroup to hold our data points
         var ewsMarkers = L.featureGroup().addTo(map);
 
-        // 3. Your Live CSV Link
-        var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv'; // <-- PASTE YOUR GOOGLE SHEETS LINK HERE
+        // 2. YOUR GOOGLE SHEETS LINK HERE!
+        var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv'; 
 
         function getColor(status) {
             if (!status) return 'gray';
@@ -54,7 +52,6 @@
             return '#1565c0';
         }
 
-        // 4. Parse CSV and Add Markers
         Papa.parse(csvUrl, {
             download: true,
             header: true,
@@ -62,12 +59,12 @@
             complete: function(results) {
                 results.data.forEach(function(row) {
                     var lat = parseFloat(row['LATITUDE']);
-                    var lng = parseFloat(row['LONGITUDE']); 
+                    var lng = parseFloat(row['LONGITUDE']); // Ensure this matches your sheet!
                     
                     if (!isNaN(lat) && !isNaN(lng)) {
                         
-                        var metricsHtml = "";
                         var deviceType = row['DEVICE TYPE'] ? row['DEVICE TYPE'].toUpperCase() : "";
+                        var metricsHtml = "";
                         
                         if (deviceType.includes('WLMS') && row['WATER_LEVEL_M']) {
                             metricsHtml += `<b>Water Level:</b> <span style="color:#0277bd; font-weight:bold;">${row['WATER_LEVEL_M']} m</span><br>`;
@@ -76,14 +73,29 @@
                             metricsHtml += `<b>Rainfall:</b> <span style="color:#0288d1; font-weight:bold;">${row['RAINFALL_MM']} mm</span><br>`;
                         }
 
-                        var marker = L.circleMarker([lat, lng], {
-                            radius: 9,
-                            fillColor: getColor(row['Status']),
-                            color: "#fff",
-                            weight: 2,
-                            fillOpacity: 0.9
-                        });
+                        // --- NEW LOGIC: Check if FEWS ---
+                        var marker;
+                        if (deviceType.includes('FEWS')) {
+                            // Create the Siren Icon
+                            var sirenIcon = L.divIcon({
+                                html: '<div style="font-size: 22px; line-height: 1; text-shadow: 1px 1px 2px black;">🚨</div>',
+                                className: 'custom-siren',
+                                iconSize: [22, 22],
+                                iconAnchor: [11, 11]
+                            });
+                            marker = L.marker([lat, lng], { icon: sirenIcon });
+                        } else {
+                            // Create the standard Colored Circle
+                            marker = L.circleMarker([lat, lng], {
+                                radius: 9,
+                                fillColor: getColor(row['Status']),
+                                color: "#fff",
+                                weight: 2,
+                                fillOpacity: 0.9
+                            });
+                        }
 
+                        // Bind the popup to whatever marker was created
                         marker.bindPopup(`
                             <div style="line-height:1.6; min-width: 180px;">
                                 <strong style="font-size:1.1em;">${row['LIST OF INSTRUMENT']}</strong><br>
@@ -94,25 +106,25 @@
                                 <hr style="margin: 5px 0;">
                                 <small><b>Updated:</b> ${row['UPDATE:']}</small>
                             </div>
-                        `);
-
-                        // Add the marker to the group instead of directly to the map
-                        marker.addTo(ewsMarkers);
+                        `).addTo(ewsMarkers);
                     }
                 });
 
-                // 5. AUTO-CROP: Zoom map to perfectly fit all your loaded sensors!
                 if (ewsMarkers.getLayers().length > 0) {
                     map.fitBounds(ewsMarkers.getBounds(), { padding: [40, 40] });
                 }
             }
         });
 
-        // 6. Add the Legend
+        // 3. Add the Legend
         var legend = L.control({position: 'bottomright'});
         legend.onAdd = function (map) {
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML += '<strong style="display:block; margin-bottom:8px;">Sensor Status</strong>';
+            
+            // Added the Siren to the Legend
+            div.innerHTML += '<span style="font-size: 16px; margin-right: 6px;">🚨</span> Flood Warning (FEWS)<br>';
+            div.innerHTML += '<hr style="margin: 5px 0;">';
             div.innerHTML += '<i style="background: #2e7d32"></i> UP<br>';
             div.innerHTML += '<i style="background: #c62828"></i> DOWN<br>';
             div.innerHTML += '<i style="background: #ef6c00"></i> UNDER MAINTENANCE<br>';
