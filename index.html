@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tarlac EWS Monitoring Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // 1. Initialize Map centered on Tarlac Province
+        var map = L.map('map').setView([15.55, 120.55], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 2. Insert your "Publish to Web" CSV URL here
+        var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv';
+
+        // 3. Define Status Colors
+        function getColor(status) {
+            if (!status) return 'gray';
+            var s = status.toUpperCase();
+            if (s.includes('UP')) return '#2e7d32';           // Green
+            if (s.includes('DOWN')) return '#c62828';         // Red
+            if (s.includes('RELOCATION')) return '#6a1b9a';   // Purple
+            if (s.includes('MAINTENANCE')) return '#ef6c00';  // Orange
+            return '#1565c0';                                 // Blue (Default)
+        }
+
+        // 4. Load Data from Google Sheet
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                results.data.forEach(function(row) {
+                    var lat = parseFloat(row['LATITUDE']);
+                    var lng = parseFloat(row['LONGITUDE']);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        var marker = L.circleMarker([lat, lng], {
+                            radius: 9,
+                            fillColor: getColor(row['Status']),
+                            color: "#fff",
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        }).addTo(map);
+
+                        // Popup content matching your table headers
+                        var popupContent = `
+                            <div style="font-size:14px;">
+                                <strong>${row['LIST OF INSTRUMENT']}</strong><br>
+                                <hr>
+                                <b>Type:</b> ${row['DEVICE TYPE']}<br>
+                                <b>Municipality:</b> ${row['MUNICAPLITY/CITY']}<br>
+                                <b>Status:</b> <span style="color:${getColor(row['Status'])}">${row['Status']}</span><br>
+                                <b>Last Update:</b> ${row['UPDATE:']}
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
