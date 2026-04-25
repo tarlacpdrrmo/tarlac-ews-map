@@ -6,12 +6,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-
+    
     <style>
         body, html { margin: 0; padding: 0; font-family: 'Inter', sans-serif; cursor: default; }
         #map { height: 100vh; width: 100vw; background: #f3f4f6; } 
@@ -74,29 +74,9 @@
             width: 200px;
         }
 
-        .health-panel h3 {
-            margin: 0 0 12px 0;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #94a3b8;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 8px;
-            font-weight: 700;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .health-stat {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
+        .health-panel h3 { margin: 0 0 12px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; font-weight: 700; display: flex; justify-content: space-between; }
+        .health-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .health-stat:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
-
         .stat-label { font-size: 10px; font-weight: 600; color: #cbd5e1; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 800; color: #f8fafc; }
 
@@ -110,37 +90,30 @@
 
         /* --- Custom Map Markers --- */
         .custom-leaflet-icon { background: none; border: none; }
-
-        .map-marker {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 2px solid #ffffff;
-            color: #ffffff;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-            transition: transform 0.2s ease;
-        }
-
+        .map-marker { display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #ffffff; color: #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.5); transition: transform 0.2s ease; }
         .map-marker:hover { transform: scale(1.15); z-index: 1000 !important; }
 
-        /* Pulse Animation for FEWS Sirens */
-        @keyframes pulse-fews {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        @keyframes pulse-fews { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .marker-fews { animation: pulse-fews 2s infinite; }
+
+        /* --- NEW: River Flow Animations --- */
+        .river-normal { transition: all 0.5s ease; stroke-linejoin: round; stroke-linecap: round; }
+        .river-warning { stroke-dasharray: 8, 8; animation: flow 1.5s linear infinite; stroke-linejoin: round; }
+        .river-critical { stroke-dasharray: 12, 12; animation: flow 0.8s linear infinite; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(239,68,68,0.8)); }
+        
+        @keyframes flow {
+            from { stroke-dashoffset: 24; }
+            to { stroke-dashoffset: 0; }
+        }
 
         /* Leaflet Controls */
         .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important; opacity: 0.8; margin-top: 15px !important; margin-left: 15px !important; }
         .leaflet-control-zoom a { width: 26px !important; height: 26px !important; line-height: 26px !important; font-size: 14px !important; background-color: rgba(15, 23, 42, 0.85) !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,0.1) !important; backdrop-filter: blur(4px); }
         .leaflet-control-zoom a:hover { background-color: rgba(30, 41, 59, 0.95) !important; color: white !important; }
 
-        /* Popup Styling */
         .leaflet-popup-content-wrapper { border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); font-family: 'Inter', sans-serif; }
         .leaflet-popup-content { margin: 14px; color: #1f2937; }
-
+        
     </style>
 </head>
 <body>
@@ -161,7 +134,7 @@
 
     <div class="health-panel">
         <h3>Network Health <span id="statTotal" style="color: #38bdf8;">0 Total</span></h3>
-
+        
         <div class="health-stat">
             <div class="stat-label"><div class="indicator-dot dot-up"></div> ACTIVE (UP)</div>
             <div class="stat-value" id="statUp">0</div>
@@ -178,9 +151,13 @@
             <div class="stat-label"><div class="indicator-dot dot-reloc"></div> RELOCATION</div>
             <div class="stat-value" id="statReloc">0</div>
         </div>
-        <div class="health-stat" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+        <div class="health-stat">
             <div class="stat-label"><span class="dot-fews">🚨</span> FEWS SIRENS</div>
             <div class="stat-value" id="statFews" style="color: #cbd5e1;">0</div>
+        </div>
+        <div class="health-stat" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-bottom: 0;">
+            <div class="stat-label"><span style="font-size: 14px; margin-right: 4px;">🌊</span> RIVER FLOW</div>
+            <div class="stat-value" id="statRiver" style="color: #3b82f6; font-size: 11px;">NORMAL</div>
         </div>
     </div>
 
@@ -194,40 +171,51 @@
         var darkBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
         var lightBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
 
-        // Set default basemap to Light mode
         var currentBasemap = lightBasemap;
         currentBasemap.addTo(map);
 
-        // Theme Switch Logic
         document.getElementById('themeToggleCheckbox').addEventListener('change', function(e) {
             map.removeLayer(currentBasemap);
-            if (e.target.checked) {
-                currentBasemap = lightBasemap;
-            } else {
-                currentBasemap = darkBasemap;
-            }
+            currentBasemap = e.target.checked ? lightBasemap : darkBasemap;
             currentBasemap.addTo(map);
             currentBasemap.bringToBack(); 
         });
 
-        var ewsMarkers = L.featureGroup().addTo(map);
+        // --- NEW: River GeoJSON Data (Approximate Tarlac River System) ---
+        // Coordinates format: [Longitude, Latitude]
+        var tarlacRiverGeoJSON = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "properties": { "segment": "upstream", "name": "Upper River" }, "geometry": { "type": "LineString", "coordinates": [[120.45, 15.60], [120.48, 15.58], [120.50, 15.55], [120.55, 15.50], [120.59, 15.48]] } },
+                { "type": "Feature", "properties": { "segment": "midstream", "name": "Mid River" }, "geometry": { "type": "LineString", "coordinates": [[120.59, 15.48], [120.61, 15.46], [120.64, 15.43], [120.67, 15.38]] } },
+                { "type": "Feature", "properties": { "segment": "downstream", "name": "Lower River" }, "geometry": { "type": "LineString", "coordinates": [[120.67, 15.38], [120.69, 15.35], [120.70, 15.32], [120.75, 15.25]] } }
+            ]
+        };
 
+        // Add river layer underneath the markers
+        var riverLayer = L.geoJSON(tarlacRiverGeoJSON, {
+            style: function(feature) {
+                return { color: '#3b82f6', weight: 4, opacity: 0.5, className: 'river-normal' };
+            }
+        }).addTo(map);
+
+
+        var ewsMarkers = L.featureGroup().addTo(map);
         var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv'; 
 
-        // Network Health Colors
         function getColor(status) {
             if (!status) return '#475569'; 
             var s = status.toUpperCase();
-            if (s.includes('UP')) return '#10b981';       // Emerald Green
-            if (s.includes('DOWN')) return '#ef4444';     // Red
-            if (s.includes('RELOCATION')) return '#8b5cf6'; // Purple
-            if (s.includes('MAINTENANCE')) return '#f59e0b'; // Amber
-            return '#3b82f6'; // Fallback Blue
+            if (s.includes('UP')) return '#10b981';       
+            if (s.includes('DOWN')) return '#ef4444';     
+            if (s.includes('RELOCATION')) return '#8b5cf6'; 
+            if (s.includes('MAINTENANCE')) return '#f59e0b'; 
+            return '#3b82f6'; 
         }
 
         // Live Polling Setup
         fetchData();
-        setInterval(fetchData, 60000); // Silent refresh every 60 seconds
+        setInterval(fetchData, 60000); 
 
         function fetchData() {
             Papa.parse(csvUrl, {
@@ -237,18 +225,21 @@
                 complete: function(results) {
                     ewsMarkers.clearLayers();
                     var counts = { total: 0, up: 0, down: 0, maint: 0, reloc: 0, fews: 0 };
+                    
+                    // Track highest water level for river dynamics
+                    var maxWaterLevel = 0;
 
                     results.data.forEach(function(row) {
                         var lat = parseFloat(row['LATITUDE']);
                         var lng = parseFloat(row['LONGITUDE']); 
-
+                        
                         if (!isNaN(lat) && !isNaN(lng)) {
-
+                            
                             counts.total++;
                             var rawStatus = (row['Status'] || "").toUpperCase();
                             var deviceType = row['DEVICE TYPE'] ? row['DEVICE TYPE'].toUpperCase() : "";
                             var statusColor = getColor(row['Status']);
-
+                            
                             if (rawStatus.includes('UP')) counts.up++;
                             else if (rawStatus.includes('DOWN')) counts.down++;
                             else if (rawStatus.includes('MAINTENANCE')) counts.maint++;
@@ -257,20 +248,23 @@
                             if (deviceType.includes('FEWS')) counts.fews++;
 
                             var metricsHtml = "";
-                            if (deviceType.includes('WLMS') && row['WATER_LEVEL_M']) {
-                                metricsHtml += `<b>Water Level:</b> <span style="color:#0284c7; font-weight:800;">${row['WATER_LEVEL_M']} m</span><br>`;
+                            if ((deviceType.includes('WLMS') || deviceType.includes('TANDEM')) && row['WATER_LEVEL_M']) {
+                                let wl = parseFloat(row['WATER_LEVEL_M']);
+                                metricsHtml += `<b>Water Level:</b> <span style="color:#0284c7; font-weight:800;">${wl} m</span><br>`;
+                                
+                                // Capture the highest water level for the river animation
+                                if (!isNaN(wl) && wl > maxWaterLevel) {
+                                    maxWaterLevel = wl;
+                                }
                             }
-                            if (deviceType.includes('ARG') && row['RAINFALL_MM']) {
+                            if ((deviceType.includes('ARG') || deviceType.includes('TANDEM')) && row['RAINFALL_MM']) {
                                 metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${row['RAINFALL_MM']} mm</span><br>`;
                             }
 
-                            // Device Icon Logic
-                            // --- NEW: Sensor-Specific Icons ---
                             var isFews = deviceType.includes('FEWS');
                             var iconHtml = "";
-
+                            
                             if (isFews) {
-                                // EXACT MATCH: Unified Red Siren Emoji for FEWS
                                 iconHtml = `<div style="font-size: 16px; line-height: 1; margin-top: -1px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">🚨</div>`;
                             } else if (deviceType.includes('TANDEM')) {
                                 iconHtml = `<i class="fa-solid fa-cloud-showers-water" style="font-size: 12px;"></i>`;
@@ -279,12 +273,9 @@
                             } else if (deviceType.includes('ARG')) {
                                 iconHtml = `<i class="fa-solid fa-cloud-rain" style="font-size: 12px;"></i>`;
                             } else {
-                                // WLMS, ARG, TANDEM all use a unified telemetry instrument icon
-                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`;
-                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`; // Fallback
+                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`; 
                             }
 
-                            // Dynamic size and pulse based on whether it is a siren
                             var markerSize = isFews ? 30 : 26;
                             var pulseClass = isFews ? 'marker-fews' : '';
 
@@ -319,7 +310,37 @@
                         }
                     });
 
-                    // Update Health Tally
+                    // --- NEW: Dynamic River Flow Logic ---
+                    // Adjust these thresholds to match Tarlac's actual critical benchmarks
+                    var riverState = 'normal';
+                    if (maxWaterLevel >= 5.0) riverState = 'critical';
+                    else if (maxWaterLevel >= 3.0) riverState = 'warning';
+
+                    // Update Map Graphics
+                    riverLayer.setStyle(function(feature) {
+                        if (riverState === 'critical') {
+                            if (feature.properties.segment === 'midstream') return { color: '#f59e0b', weight: 6, opacity: 0.8, className: 'river-warning' }; // Orange
+                            if (feature.properties.segment === 'downstream') return { color: '#ef4444', weight: 8, opacity: 0.9, className: 'river-critical' }; // Pulsing Red
+                        } else if (riverState === 'warning') {
+                            if (feature.properties.segment === 'midstream' || feature.properties.segment === 'downstream') return { color: '#f59e0b', weight: 5, opacity: 0.7, className: 'river-warning' };
+                        }
+                        return { color: '#3b82f6', weight: 4, opacity: 0.4, className: 'river-normal' };
+                    });
+
+                    // Update UI Dashboard Text
+                    var statRiver = document.getElementById('statRiver');
+                    if (riverState === 'critical') {
+                        statRiver.innerText = 'CRITICAL FLOOD';
+                        statRiver.style.color = '#ef4444';
+                    } else if (riverState === 'warning') {
+                        statRiver.innerText = 'ELEVATED FLOW';
+                        statRiver.style.color = '#f59e0b';
+                    } else {
+                        statRiver.innerText = 'NORMAL';
+                        statRiver.style.color = '#3b82f6';
+                    }
+
+                    // Standard Tally Updates
                     document.getElementById('statTotal').innerText = `${counts.total} Total`;
                     document.getElementById('statUp').innerText = counts.up;
                     document.getElementById('statDown').innerText = counts.down;
@@ -327,7 +348,6 @@
                     document.getElementById('statReloc').innerText = counts.reloc;
                     document.getElementById('statFews').innerText = counts.fews;
 
-                    // Only zoom to fit bounds on the very first load
                     if (ewsMarkers.getLayers().length > 0 && !window.initialZoomDone) {
                         map.fitBounds(ewsMarkers.getBounds(), { padding: [50, 50] });
                         window.initialZoomDone = true;
