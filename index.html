@@ -264,16 +264,20 @@
                                 metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${row['RAINFALL_MM']} mm</span><br>`;
                             }
 
-                            // Device Icon Logic
+                            // --- NEW: Sensor-Specific Icons ---
                             var isFews = deviceType.includes('FEWS');
                             var iconHtml = "";
                             
                             if (isFews) {
-                                // EXACT MATCH: Unified Red Siren Emoji for FEWS
                                 iconHtml = `<div style="font-size: 16px; line-height: 1; margin-top: -1px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">🚨</div>`;
+                            } else if (deviceType.includes('TANDEM')) {
+                                iconHtml = `<i class="fa-solid fa-cloud-showers-water" style="font-size: 12px;"></i>`;
+                            } else if (deviceType.includes('WLMS')) {
+                                iconHtml = `<i class="fa-solid fa-water" style="font-size: 12px;"></i>`;
+                            } else if (deviceType.includes('ARG')) {
+                                iconHtml = `<i class="fa-solid fa-cloud-rain" style="font-size: 12px;"></i>`;
                             } else {
-                                // WLMS, ARG, TANDEM all use a unified telemetry instrument icon
-                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`;
+                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`; // Fallback
                             }
 
                             // Dynamic size and pulse based on whether it is a siren
