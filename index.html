@@ -5,6 +5,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,9 +14,9 @@
     
     <style>
         body, html { margin: 0; padding: 0; font-family: 'Inter', sans-serif; cursor: default; }
-        #map { height: 100vh; width: 100vw; background: #111; } 
+        #map { height: 100vh; width: 100vw; background: #f3f4f6; } 
 
-        /* --- Top Control Pill (Theme Switch) --- */
+        /* --- Top Control Pill (Theme Switch & Title) --- */
         .control-panel {
             position: absolute;
             top: 15px; 
@@ -31,21 +32,24 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.5);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 15px;
         }
 
         .panel-title {
-            font-size: 11px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             color: #f8fafc;
             border-right: 1px solid rgba(255,255,255,0.2);
-            padding-right: 12px;
+            padding-right: 15px;
+            line-height: 1.3;
+            text-align: right;
+            white-space: normal;
         }
 
         /* iOS-Style Theme Switch */
-        .switch-container { display: flex; align-items: center; gap: 8px; }
+        .switch-container { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
         .switch-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
         .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -54,7 +58,7 @@
         input:checked + .slider { background-color: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.5); }
         input:checked + .slider:before { transform: translateX(14px); background-color: #ffffff; }
 
-        /* --- Network Health Dashboard (The New Legend) --- */
+        /* --- Network Health Dashboard --- */
         .health-panel {
             position: absolute;
             top: 15px;
@@ -67,7 +71,7 @@
             padding: 16px;
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 220px;
+            width: 200px;
         }
 
         .health-panel h3 {
@@ -93,36 +97,44 @@
         }
         .health-stat:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
 
-        .stat-label {
-            font-size: 10px;
-            font-weight: 600;
-            color: #cbd5e1;
+        .stat-label { font-size: 10px; font-weight: 600; color: #cbd5e1; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+        .stat-value { font-size: 14px; font-weight: 800; color: #f8fafc; }
+
+        /* Indicator Dots */
+        .indicator-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        .dot-up { background: #10b981; }      
+        .dot-down { background: #ef4444; }    
+        .dot-maint { background: #f59e0b; }   
+        .dot-reloc { background: #8b5cf6; }   
+        .dot-fews { font-size: 14px; line-height: 1; margin-right: -4px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); } 
+
+        /* --- Custom Map Markers --- */
+        .custom-leaflet-icon { background: none; border: none; }
+        
+        .map-marker {
             display: flex;
             align-items: center;
-            gap: 8px;
-            letter-spacing: 0.5px;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease;
         }
+        
+        .map-marker:hover { transform: scale(1.15); z-index: 1000 !important; }
 
-        .stat-value {
-            font-size: 14px;
-            font-weight: 800;
-            color: #f8fafc;
+        /* Pulse Animation for FEWS Sirens */
+        @keyframes pulse-fews {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
+        .marker-fews { animation: pulse-fews 2s infinite; }
 
-        /* Indicator Dots for Legend Integration */
-        .indicator-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-        .dot-up { background: #10b981; }      /* Emerald Green */
-        .dot-down { background: #ef4444; }    /* Red */
-        .dot-maint { background: #f59e0b; }   /* Amber */
-        .dot-reloc { background: #8b5cf6; }   /* Purple */
-        .dot-fews { font-size: 12px; line-height: 1; margin-right: -2px; } /* Siren emoji */
-
-        /* Removes background from the custom emoji icon on map */
-        .custom-siren { background: none; border: none; }
-
-        /* --- Leaflet Controls (Compact & Smooth) --- */
-        .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important; opacity: 0.7; margin-top: 15px !important; margin-left: 15px !important; }
-        .leaflet-control-zoom a { width: 24px !important; height: 24px !important; line-height: 24px !important; font-size: 14px !important; background-color: rgba(15, 23, 42, 0.85) !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,0.1) !important; backdrop-filter: blur(4px); }
+        /* Leaflet Controls */
+        .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important; opacity: 0.8; margin-top: 15px !important; margin-left: 15px !important; }
+        .leaflet-control-zoom a { width: 26px !important; height: 26px !important; line-height: 26px !important; font-size: 14px !important; background-color: rgba(15, 23, 42, 0.85) !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,0.1) !important; backdrop-filter: blur(4px); }
         .leaflet-control-zoom a:hover { background-color: rgba(30, 41, 59, 0.95) !important; color: white !important; }
 
         /* Popup Styling */
@@ -134,11 +146,13 @@
 <body>
 
     <div class="control-panel">
-        <div class="panel-title">EWS Telemetry</div>
+        <div class="panel-title">
+            Community Based Flood Early<br>Warning Monitoring System
+        </div>
         <div class="switch-container">
             <span class="switch-label">Dark</span>
             <label class="switch">
-                <input type="checkbox" id="themeToggleCheckbox">
+                <input type="checkbox" id="themeToggleCheckbox" checked>
                 <span class="slider"></span>
             </label>
             <span class="switch-label">Light</span>
@@ -177,15 +191,11 @@
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         // Basemap Layers
-        var darkBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap', maxZoom: 19
-        });
-        var lightBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap', maxZoom: 19
-        });
+        var darkBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
+        var lightBasemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
 
-        // Set default basemap
-        var currentBasemap = darkBasemap;
+        // Set default basemap to Light mode
+        var currentBasemap = lightBasemap;
         currentBasemap.addTo(map);
 
         // Theme Switch Logic
@@ -204,100 +214,119 @@
 
         var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv'; 
 
-        // Refined Colors to match the new UI dots
+        // Network Health Colors
         function getColor(status) {
-            if (!status) return '#475569'; // gray
+            if (!status) return '#475569'; 
             var s = status.toUpperCase();
-            if (s.includes('UP')) return '#10b981';       // Emerald
+            if (s.includes('UP')) return '#10b981';       // Emerald Green
             if (s.includes('DOWN')) return '#ef4444';     // Red
             if (s.includes('RELOCATION')) return '#8b5cf6'; // Purple
             if (s.includes('MAINTENANCE')) return '#f59e0b'; // Amber
-            return '#3b82f6'; // Blue fallback
+            return '#3b82f6'; // Fallback Blue
         }
 
-        Papa.parse(csvUrl, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                
-                var counts = { total: 0, up: 0, down: 0, maint: 0, reloc: 0, fews: 0 };
+        // Live Polling Setup
+        fetchData();
+        setInterval(fetchData, 60000); // Silent refresh every 60 seconds
 
-                results.data.forEach(function(row) {
-                    var lat = parseFloat(row['LATITUDE']);
-                    var lng = parseFloat(row['LONGITUDE']); 
-                    
-                    if (!isNaN(lat) && !isNaN(lng)) {
+        function fetchData() {
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    ewsMarkers.clearLayers();
+                    var counts = { total: 0, up: 0, down: 0, maint: 0, reloc: 0, fews: 0 };
+
+                    results.data.forEach(function(row) {
+                        var lat = parseFloat(row['LATITUDE']);
+                        var lng = parseFloat(row['LONGITUDE']); 
                         
-                        counts.total++;
-                        var rawStatus = (row['Status'] || "").toUpperCase();
-                        var deviceType = row['DEVICE TYPE'] ? row['DEVICE TYPE'].toUpperCase() : "";
-                        
-                        if (rawStatus.includes('UP')) counts.up++;
-                        else if (rawStatus.includes('DOWN')) counts.down++;
-                        else if (rawStatus.includes('MAINTENANCE')) counts.maint++;
-                        else if (rawStatus.includes('RELOCATION')) counts.reloc++;
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            
+                            counts.total++;
+                            var rawStatus = (row['Status'] || "").toUpperCase();
+                            var deviceType = row['DEVICE TYPE'] ? row['DEVICE TYPE'].toUpperCase() : "";
+                            var statusColor = getColor(row['Status']);
+                            
+                            if (rawStatus.includes('UP')) counts.up++;
+                            else if (rawStatus.includes('DOWN')) counts.down++;
+                            else if (rawStatus.includes('MAINTENANCE')) counts.maint++;
+                            else if (rawStatus.includes('RELOCATION')) counts.reloc++;
 
-                        if (deviceType.includes('FEWS')) counts.fews++;
+                            if (deviceType.includes('FEWS')) counts.fews++;
 
-                        var metricsHtml = "";
-                        
-                        if (deviceType.includes('WLMS') && row['WATER_LEVEL_M']) {
-                            metricsHtml += `<b>Water Level:</b> <span style="color:#0284c7; font-weight:800;">${row['WATER_LEVEL_M']} m</span><br>`;
-                        }
-                        if (deviceType.includes('ARG') && row['RAINFALL_MM']) {
-                            metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${row['RAINFALL_MM']} mm</span><br>`;
-                        }
+                            var metricsHtml = "";
+                            if (deviceType.includes('WLMS') && row['WATER_LEVEL_M']) {
+                                metricsHtml += `<b>Water Level:</b> <span style="color:#0284c7; font-weight:800;">${row['WATER_LEVEL_M']} m</span><br>`;
+                            }
+                            if (deviceType.includes('ARG') && row['RAINFALL_MM']) {
+                                metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${row['RAINFALL_MM']} mm</span><br>`;
+                            }
 
-                        var marker;
-                        if (deviceType.includes('FEWS')) {
-                            var sirenIcon = L.divIcon({
-                                html: '<div style="font-size: 20px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🚨</div>',
-                                className: 'custom-siren',
-                                iconSize: [20, 20],
-                                iconAnchor: [10, 10]
+                            // Device Icon Logic
+                            var isFews = deviceType.includes('FEWS');
+                            var iconHtml = "";
+                            
+                            if (isFews) {
+                                // EXACT MATCH: Unified Red Siren Emoji for FEWS
+                                iconHtml = `<div style="font-size: 16px; line-height: 1; margin-top: -1px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">🚨</div>`;
+                            } else {
+                                // WLMS, ARG, TANDEM all use a unified telemetry instrument icon
+                                iconHtml = `<i class="fa-solid fa-satellite-dish" style="font-size: 12px;"></i>`;
+                            }
+
+                            // Dynamic size and pulse based on whether it is a siren
+                            var markerSize = isFews ? 30 : 26;
+                            var pulseClass = isFews ? 'marker-fews' : '';
+
+                            var customIcon = L.divIcon({
+                                html: `
+                                    <div class="map-marker ${pulseClass}" style="background-color: ${statusColor}; width: ${markerSize}px; height: ${markerSize}px;">
+                                        ${iconHtml}
+                                    </div>
+                                `,
+                                className: 'custom-leaflet-icon',
+                                iconSize: [markerSize, markerSize],
+                                iconAnchor: [markerSize / 2, markerSize / 2]
                             });
-                            marker = L.marker([lat, lng], { icon: sirenIcon });
-                        } else {
-                            marker = L.circleMarker([lat, lng], {
-                                radius: 8,
-                                fillColor: getColor(row['Status']),
-                                color: "#ffffff",
-                                weight: 1.5,
-                                fillOpacity: 0.95
-                            });
-                        }
 
-                        marker.bindPopup(`
-                            <div style="line-height:1.6; min-width: 180px;">
-                                <strong style="font-size:11px; text-transform:uppercase; color:#0f172a; display:block; margin-bottom:6px; border-bottom:2px solid #e2e8f0; padding-bottom:4px;">
-                                    ${row['LIST OF INSTRUMENT']}
-                                </strong>
-                                <div style="font-size:12px; color:#334155;">
-                                    <span style="color:#64748b; font-size:10px; text-transform:uppercase; font-weight:700;">Type:</span> ${row['DEVICE TYPE']}<br>
-                                    <span style="color:#64748b; font-size:10px; text-transform:uppercase; font-weight:700;">Status:</span> <span style="font-weight:700; color:${getColor(row['Status'])}">${row['Status']}</span><br>
-                                    ${metricsHtml}
+                            var marker = L.marker([lat, lng], { icon: customIcon });
+
+                            marker.bindPopup(`
+                                <div style="line-height:1.6; min-width: 180px;">
+                                    <strong style="font-size:11px; text-transform:uppercase; color:#0f172a; display:block; margin-bottom:6px; border-bottom:2px solid #e2e8f0; padding-bottom:4px;">
+                                        ${row['LIST OF INSTRUMENT']}
+                                    </strong>
+                                    <div style="font-size:12px; color:#334155;">
+                                        <span style="color:#64748b; font-size:10px; text-transform:uppercase; font-weight:700;">Type:</span> ${row['DEVICE TYPE']}<br>
+                                        <span style="color:#64748b; font-size:10px; text-transform:uppercase; font-weight:700;">Status:</span> <span style="font-weight:700; color:${statusColor}">${row['Status']}</span><br>
+                                        ${metricsHtml}
+                                    </div>
+                                    <div style="margin-top:8px; font-size:9px; color:#94a3b8; text-align:right;">
+                                        Updated: ${row['UPDATE:']}
+                                    </div>
                                 </div>
-                                <div style="margin-top:8px; font-size:9px; color:#94a3b8; text-align:right;">
-                                    Updated: ${row['UPDATE:']}
-                                </div>
-                            </div>
-                        `).addTo(ewsMarkers);
+                            `).addTo(ewsMarkers);
+                        }
+                    });
+
+                    // Update Health Tally
+                    document.getElementById('statTotal').innerText = `${counts.total} Total`;
+                    document.getElementById('statUp').innerText = counts.up;
+                    document.getElementById('statDown').innerText = counts.down;
+                    document.getElementById('statMaint').innerText = counts.maint;
+                    document.getElementById('statReloc').innerText = counts.reloc;
+                    document.getElementById('statFews').innerText = counts.fews;
+
+                    // Only zoom to fit bounds on the very first load
+                    if (ewsMarkers.getLayers().length > 0 && !window.initialZoomDone) {
+                        map.fitBounds(ewsMarkers.getBounds(), { padding: [50, 50] });
+                        window.initialZoomDone = true;
                     }
-                });
-
-                document.getElementById('statTotal').innerText = `${counts.total} Total`;
-                document.getElementById('statUp').innerText = counts.up;
-                document.getElementById('statDown').innerText = counts.down;
-                document.getElementById('statMaint').innerText = counts.maint;
-                document.getElementById('statReloc').innerText = counts.reloc;
-                document.getElementById('statFews').innerText = counts.fews;
-
-                if (ewsMarkers.getLayers().length > 0) {
-                    map.fitBounds(ewsMarkers.getBounds(), { padding: [50, 50] });
                 }
-            }
-        });
+            });
+        }
     </script>
 </body>
 </html>
