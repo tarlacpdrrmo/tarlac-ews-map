@@ -168,52 +168,43 @@
         .history-log::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .history-log::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* --- NEW: View Chart Button --- */
+        /* --- View Chart Button --- */
         .btn-view-chart {
-            width: 100%;
-            background: #f8fafc;
-            color: #0284c7;
-            border: 1px solid #bae6fd;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            width: 100%; background: #f8fafc; color: #0284c7; border: 1px solid #bae6fd;
+            padding: 8px; border-radius: 6px; font-size: 10px; font-weight: 800;
+            text-transform: uppercase; cursor: pointer; margin-top: 10px;
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;
         }
         .btn-view-chart:hover { background: #0284c7; color: white; border-color: #0284c7; }
 
-        /* --- NEW: Bottom Chart Panel UI --- */
+        /* --- Bottom Slide-Up Chart Panel --- */
         #chart-panel {
             position: absolute;
-            bottom: -400px; /* Hidden off-screen by default */
+            bottom: 0;
             left: 0;
             width: 100vw;
-            height: 320px;
+            height: 260px; 
             background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(12px);
             border-top: 1px solid rgba(255,255,255,0.1);
             z-index: 2000;
-            transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            padding: 20px 30px;
+            transform: translateY(100%); 
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            padding: 15px 25px;
             box-sizing: border-box;
             color: white;
             display: flex;
             flex-direction: column;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
-        #chart-panel.open { bottom: 0; }
+        #chart-panel.open { 
+            transform: translateY(0); 
+        }
         
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-        .chart-title { font-size: 14px; font-weight: 800; color: #f8fafc; text-transform: uppercase; letter-spacing: 0.5px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .chart-title { font-size: 13px; font-weight: 800; color: #f8fafc; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .chart-close { background: rgba(255,255,255,0.1); border: none; color: #cbd5e1; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .chart-close { background: rgba(255,255,255,0.1); border: none; color: #cbd5e1; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .chart-close:hover { background: #ef4444; color: white; }
         
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
@@ -297,10 +288,8 @@
         // ==============================================================================
         
         var allDownloadedData = [];
-        
-        // NEW: Upgraded Data Engine to hold both HTML for the timeline and RAW numbers for the Chart
         var archivedDataMap = {}; 
-        var currentChartInstance = null; // Holds the active Chart.js object
+        var currentChartInstance = null; 
 
         function getColor(status) {
             if (!status) return '#475569'; 
@@ -356,7 +345,6 @@
                     
                     let historyKey = sensorName + "_" + deviceType; 
 
-                    // Prepare object to hold both HTML for the popup and Raw Numbers for the chart
                     if (!archivedDataMap[historyKey]) {
                         archivedDataMap[historyKey] = { html: [], raw: [] };
                     }
@@ -379,7 +367,6 @@
                     if (metricsArray.length > 0) {
                         let timeStr = recordDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         
-                        // Push HTML for the Carousel
                         archivedDataMap[historyKey].html.push(`
                             <div class="history-item">
                                 <span class="history-time">${timeStr}</span>
@@ -387,9 +374,8 @@
                             </div>
                         `);
 
-                        // Push RAW DATA for the Line Chart
                         archivedDataMap[historyKey].raw.push({
-                            timestamp: recordDate.getTime(), // Unix time for sorting
+                            timestamp: recordDate.getTime(),
                             timeStr: timeStr,
                             wl: wlVal,
                             rg: rgVal
@@ -448,12 +434,24 @@
 
                         var historyKey = sensorName + "_" + deviceType; 
 
-                        // Build HORIZONTAL history box HTML + The Chart Button
+                        // Build HORIZONTAL history box HTML + Scrubbed Chart Button
                         var historyHtml = "";
                         if (archivedDataMap[historyKey] && archivedDataMap[historyKey].html.length > 0) {
                             
-                            // Safely encode the key to pass into the onclick function
-                            let encodedKey = encodeURIComponent(historyKey);
+                            let safeKey = encodeURIComponent(historyKey).replace(/'/g, "%27");
+
+                            // --- DATA SCRUBBER ---
+                            // Check if the history actually contains at least one valid number to graph
+                            let hasChartData = archivedDataMap[historyKey].raw.some(d => !isNaN(d.wl) || !isNaN(d.rg));
+                            
+                            let chartBtnHtml = "";
+                            if (hasChartData) {
+                                chartBtnHtml = `
+                                    <button class="btn-view-chart" onclick="window.openChart('${safeKey}')">
+                                        <i class="fa-solid fa-chart-line"></i> View Line Chart
+                                    </button>
+                                `;
+                            }
 
                             historyHtml = `
                                 <div class="history-container">
@@ -463,9 +461,7 @@
                                     <div class="history-log">
                                         ${archivedDataMap[historyKey].html.join('')}
                                     </div>
-                                    <button class="btn-view-chart" onclick="window.openChart('${encodedKey}')">
-                                        <i class="fa-solid fa-chart-line"></i> View Line Chart
-                                    </button>
+                                    ${chartBtnHtml}
                                 </div>
                             `;
                         }
@@ -570,12 +566,12 @@
 
         map.on('popupclose', function() {
             ewsBuffers.clearLayers();
-            // Optional: Also auto-close the chart if they close the map popup
+            // Optional: Auto-close the chart when popup closes
             // window.closeChart(); 
         });
 
         // ==============================================================================
-        // NEW: CHART.JS RENDERING ENGINE
+        // CLEAN, SMOOTH CHART.JS RENDERING ENGINE
         // ==============================================================================
         window.openChart = function(encodedKey) {
             var historyKey = decodeURIComponent(encodedKey);
@@ -583,37 +579,35 @@
             
             if (!dataObj || dataObj.raw.length === 0) return;
 
-            // Sort data chronologically (Oldest to Newest) for the graph
             var sortedData = [...dataObj.raw].sort((a, b) => a.timestamp - b.timestamp);
 
             var labels = sortedData.map(d => d.timeStr);
             var wlData = sortedData.map(d => isNaN(d.wl) ? null : d.wl);
             var rgData = sortedData.map(d => isNaN(d.rg) ? null : d.rg);
 
-            // Update Panel UI Title
             document.getElementById('chart-title').innerText = historyKey.replace('_', ' - ') + " (24H Trend)";
-            
-            // Slide Panel Up
             document.getElementById('chart-panel').classList.add('open');
 
             var ctx = document.getElementById('historyChart').getContext('2d');
 
-            // Destroy previous chart if it exists so we can draw a new one
             if (currentChartInstance) {
                 currentChartInstance.destroy();
             }
 
-            // Build Datasets dynamically based on what data exists
             var datasets = [];
             
             if (wlData.some(d => d !== null)) {
                 datasets.push({
                     label: 'Water Level (m)',
                     data: wlData,
-                    borderColor: '#0284c7', // Slate Blue
-                    backgroundColor: 'rgba(2, 132, 199, 0.2)',
+                    borderColor: '#0284c7', 
+                    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+                    borderWidth: 2,
+                    pointRadius: 0, 
+                    pointHoverRadius: 6,
+                    pointHitRadius: 15, 
                     fill: true,
-                    tension: 0.4, // Curvy lines
+                    tension: 0.45, 
                     yAxisID: 'y'
                 });
             }
@@ -622,15 +616,18 @@
                 datasets.push({
                     label: 'Rainfall (mm)',
                     data: rgData,
-                    borderColor: '#0ea5e9', // Cyan
-                    backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                    borderColor: '#0ea5e9', 
+                    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointHitRadius: 15,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.45,
                     yAxisID: 'y1'
                 });
             }
 
-            // Create the Line Chart
             currentChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -647,8 +644,8 @@
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } },
-                            grid: { color: 'rgba(255,255,255,0.05)' }
+                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 9 }, maxRotation: 0 },
+                            grid: { display: false } 
                         },
                         y: {
                             type: 'linear',
@@ -660,21 +657,21 @@
                         },
                         y1: {
                             type: 'linear',
-                            display: datasets.length > 1, // Only show right axis if we have 2 datasets
+                            display: datasets.length > 1, 
                             position: 'right',
                             title: { display: true, text: 'Millimeters (mm)', color: '#0ea5e9', font: { size: 10, weight: 'bold'} },
                             ticks: { color: '#0ea5e9' },
-                            grid: { drawOnChartArea: false } // Prevents gridline overlapping
+                            grid: { drawOnChartArea: false } 
                         }
                     },
                     plugins: {
                         legend: {
-                            labels: { color: '#f8fafc', font: { family: 'Inter', size: 12, weight: 'bold' } }
+                            labels: { color: '#f8fafc', font: { family: 'Inter', size: 11, weight: 'bold' } }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                            titleFont: { family: 'Inter', size: 13 },
-                            bodyFont: { family: 'Inter', size: 12, weight: 'bold' },
+                            titleFont: { family: 'Inter', size: 12 },
+                            bodyFont: { family: 'Inter', size: 11, weight: 'bold' },
                             padding: 10,
                             cornerRadius: 8,
                             displayColors: true
