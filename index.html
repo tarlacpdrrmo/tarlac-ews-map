@@ -143,13 +143,16 @@
         
         .gps-box { background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.08); padding: 4px 8px; border-radius: 6px; margin-top: 6px; margin-bottom: 6px; font-size: 9px; font-family: monospace; color: #475569; display: flex; align-items: center; gap: 6px; }
 
-        /* History Log UI */
+        /* --- History Log UI (METERS & MM ONLY) --- */
         .history-container { margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
-        .history-title { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .history-log { max-height: 80px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; font-size: 9px; color: #475569; }
+        .history-title { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+        .history-log { max-height: 90px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-size: 10px; color: #0f172a; }
         .history-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
         .history-item:last-child { border-bottom: none; }
-        .history-time { font-weight: 700; color: #64748b; }
+        .history-time { font-weight: 700; color: #64748b; font-size: 9px; }
+        .history-metrics { font-weight: 800; }
+        
+        /* Custom scrollbar */
         .history-log::-webkit-scrollbar { width: 4px; }
         .history-log::-webkit-scrollbar-track { background: transparent; }
         .history-log::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -212,11 +215,14 @@
 
         var ewsMarkers = L.featureGroup().addTo(map);
         
-        // ==========================================
-        // PASTE YOUR CSV LINKS HERE
-        // ==========================================
+        // ==============================================================================
+        // IMPORTANT: PASTE YOUR TWO PUBLISHED CSV LINKS HERE
+        // ==============================================================================
         var mainCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?output=csv'; 
-        var archiveCsvUrl = 'YOUR_NEW_ARCHIVE_CSV_LINK_HERE'; // <--- PASTE ARCHIVE LINK HERE
+        
+        // ---> THIS MUST BE THE LINK TO YOUR ARCHIVE TAB FOR THE HISTORY TO WORK <---
+        var archiveCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-3_dPrWSR7GQ9AKKIFJ9YRbbUHyJjx4_mWTwVuuqQ68oQhUN_yz4hqP2nreUu-U8eM5_grye4lefD/pub?gid=1557794138&single=true&output=csv'; 
+        // ==============================================================================
         
         var allDownloadedData = [];
         var archivedHistoryMap = {}; 
@@ -253,30 +259,32 @@
             archivedHistoryMap = {};
             var twentyFourHoursAgo = new Date().getTime() - (24 * 60 * 60 * 1000);
 
-            // Process Archive Data (Metrics Only)
+            // --- PROCESS ARCHIVE (ONLY METERS AND MM) ---
             for (let i = archiveData.length - 1; i >= 0; i--) {
                 let row = archiveData[i];
                 let keys = Object.keys(row);
-                let timestampStr = row[keys[keys.length - 1]]; 
+                
+                // Grab timestamp (Assuming it's the last column added by your script)
+                let timestampStr = row['TIMESTAMP'] || row[keys[keys.length - 1]]; 
                 let recordDate = new Date(timestampStr);
 
                 if (!isNaN(recordDate) && recordDate.getTime() >= twentyFourHoursAgo) {
                     let sensorName = row['LIST OF INSTRUMENT'];
                     if (!archivedHistoryMap[sensorName]) archivedHistoryMap[sensorName] = [];
                     
-                    // Safely extract just the numbers/metrics
+                    // Extract exact numbers
                     let wlStr = row['WATER_LEVEL_M'] ? row['WATER_LEVEL_M'].toString().trim() : '';
                     let rgStr = row['RAINFALL_MM'] ? row['RAINFALL_MM'].toString().trim() : '';
                     
-                    // ONLY create a history log if there are actual measurements to show
+                    // ONLY save it to history if there is a number to show
                     if (wlStr !== '' || rgStr !== '') {
                         let metricsArray = [];
                         
                         if (wlStr !== '') {
-                            metricsArray.push(`<span style="color:#0284c7; font-weight:800;">WL: ${wlStr}m</span>`);
+                            metricsArray.push(`<span style="color:#0284c7;">${wlStr}m</span>`);
                         }
                         if (rgStr !== '') {
-                            metricsArray.push(`<span style="color:#0ea5e9; font-weight:800;">Rain: ${rgStr}mm</span>`);
+                            metricsArray.push(`<span style="color:#0ea5e9;">${rgStr}mm</span>`);
                         }
                         
                         let timeStr = recordDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -284,7 +292,7 @@
                         archivedHistoryMap[sensorName].push(`
                             <div class="history-item">
                                 <span class="history-time">${timeStr}</span>
-                                <span>${metricsArray.join(' <span style="color:#cbd5e1;">|</span> ')}</span>
+                                <span class="history-metrics">${metricsArray.join(' <span style="color:#cbd5e1; font-weight:400;">|</span> ')}</span>
                             </div>
                         `);
                     }
@@ -324,6 +332,7 @@
                         else if (rawStatus.includes('RELOCATION')) counts.reloc++;
                         if (deviceType.includes('FEWS')) counts.fews++;
 
+                        // Latest metrics for the top of the popup
                         var metricsHtml = "";
                         if ((deviceType.includes('WLMS') || deviceType.includes('TANDEM')) && row['WATER_LEVEL_M']) {
                             metricsHtml += `<b>Water Level:</b> <span style="color:#0284c7; font-weight:800;">${row['WATER_LEVEL_M']} m</span><br>`;
@@ -332,12 +341,14 @@
                             metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${row['RAINFALL_MM']} mm</span><br>`;
                         }
 
-                        // Render History HTML if metrics exist
+                        // Build the HTML for the 24-hour history box
                         var historyHtml = "";
                         if (archivedHistoryMap[sensorName] && archivedHistoryMap[sensorName].length > 0) {
                             historyHtml = `
                                 <div class="history-container">
-                                    <div class="history-title"><i class="fa-solid fa-clock-rotate-left"></i> Past 24 Hours (Metrics)</div>
+                                    <div class="history-title">
+                                        <i class="fa-solid fa-clock-rotate-left"></i> Past 24 Hours
+                                    </div>
                                     <div class="history-log">
                                         ${archivedHistoryMap[sensorName].join('')}
                                     </div>
@@ -345,6 +356,7 @@
                             `;
                         }
 
+                        // Set Marker Icon
                         var isFews = deviceType.includes('FEWS');
                         var iconHtml = isFews 
                             ? `<div style="font-size: 16px; line-height: 1; margin-top: -1px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">🚨</div>`
@@ -365,6 +377,7 @@
 
                         var marker = L.marker([lat, lng], { icon: customIcon });
 
+                        // Injecting everything into the Popup
                         marker.bindPopup(`
                             <div style="line-height:1.6; min-width: 180px;">
                                 <strong style="font-size:11px; text-transform:uppercase; color:#0f172a; display:block; margin-bottom:6px; border-bottom:2px solid #e2e8f0; padding-bottom:4px;">
@@ -380,7 +393,9 @@
                                     </div>
                                     ${metricsHtml}
                                 </div>
+                                
                                 ${historyHtml}
+
                                 <div style="margin-top:8px; font-size:9px; color:#94a3b8; text-align:right;">
                                     Updated: ${row['UPDATE:']}
                                 </div>
@@ -390,6 +405,7 @@
                 }
             });
 
+            // Update UI Counters
             document.getElementById('statTotal').innerText = `${counts.total} Total`;
             document.getElementById('statUp').innerText = counts.up;
             document.getElementById('statDown').innerText = counts.down;
@@ -397,6 +413,7 @@
             document.getElementById('statReloc').innerText = counts.reloc;
             document.getElementById('statFews').innerText = counts.fews;
 
+            // Only zoom bounds once
             if (ewsMarkers.getLayers().length > 0 && !window.initialZoomDone) {
                 map.fitBounds(ewsMarkers.getBounds(), { padding: [50, 50] });
                 window.initialZoomDone = true;
