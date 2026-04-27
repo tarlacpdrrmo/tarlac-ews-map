@@ -238,7 +238,8 @@
             currentBasemap.bringToBack(); 
         });
 
-        var ewsBuffers = L.featureGroup().addTo(map);
+        // Layers
+        var ewsBuffers = L.featureGroup().addTo(map); // Layer for on-demand buffers
         var ewsMarkers = L.featureGroup().addTo(map);
         
         // ==============================================================================
@@ -306,8 +307,6 @@
                     let sensorName = row['LIST OF INSTRUMENT'] || "Unknown";
                     let deviceType = row['DEVICE TYPE'] ? row['DEVICE TYPE'].toUpperCase() : "UNKNOWN";
                     
-                    // --- NEW TWO-FACTOR ID FIX ---
-                    // This creates a unique key (e.g. "BALANTI BRIDGE_FEWS") so duplicates don't share data
                     let historyKey = sensorName + "_" + deviceType; 
 
                     if (!archivedHistoryMap[historyKey]) archivedHistoryMap[historyKey] = [];
@@ -349,7 +348,7 @@
 
         function renderMapData() {
             ewsMarkers.clearLayers();
-            ewsBuffers.clearLayers(); 
+            ewsBuffers.clearLayers(); // Clean up buffers on re-render
             var counts = { total: 0, up: 0, down: 0, maint: 0, reloc: 0, fews: 0 };
             var activeFilter = document.getElementById('sensorFilter').value;
 
@@ -374,19 +373,6 @@
                         else if (rawStatus.includes('RELOCATION')) counts.reloc++;
                         if (deviceType.includes('FEWS')) counts.fews++;
 
-                        // Draw 10km Buffer for ARG/TANDEM (Ignores RELOCATION)
-                        if ((deviceType.includes('ARG') || deviceType.includes('TANDEM')) && !rawStatus.includes('RELOCATION')) {
-                            L.circle([lat, lng], {
-                                radius: 10000, 
-                                color: '#0ea5e9', 
-                                weight: 1, 
-                                opacity: 0.3, 
-                                fillColor: '#0ea5e9',
-                                fillOpacity: 0.05, 
-                                interactive: false 
-                            }).addTo(ewsBuffers);
-                        }
-
                         var metricsHtml = "";
                         
                         let mainWl = getMetric(row, 'WATER', 'COLUMN 6');
@@ -401,7 +387,6 @@
                             if (!isNaN(cleanRg)) metricsHtml += `<b>Rainfall:</b> <span style="color:#0ea5e9; font-weight:800;">${cleanRg} mm</span><br>`;
                         }
 
-                        // --- NEW TWO-FACTOR ID FIX ---
                         var historyKey = sensorName + "_" + deviceType; 
 
                         // Build HORIZONTAL history box HTML
@@ -438,6 +423,14 @@
                         });
 
                         var marker = L.marker([lat, lng], { icon: customIcon });
+                        
+                        // Attach hidden backpack data for the On-Demand Buffer trigger
+                        marker.deviceData = {
+                            type: deviceType,
+                            status: rawStatus,
+                            lat: lat,
+                            lng: lng
+                        };
 
                         marker.bindPopup(`
                             <div style="line-height:1.6; min-width: 180px;">
@@ -478,6 +471,36 @@
                 window.initialZoomDone = true;
             }
         }
+
+        // ==============================================================================
+        // NEW: ON-DEMAND 10KM BUFFER ZONE (Triggers only when clicked)
+        // ==============================================================================
+        map.on('popupopen', function(e) {
+            ewsBuffers.clearLayers(); // Clear any existing buffer first
+            
+            if (e.popup && e.popup._source && e.popup._source.deviceData) {
+                var data = e.popup._source.deviceData;
+                
+                // Draw 10km Buffer if it's an ARG or TANDEM, and not Relocated
+                if ((data.type.includes('ARG') || data.type.includes('TANDEM')) && !data.status.includes('RELOCATION')) {
+                    L.circle([data.lat, data.lng], {
+                        radius: 10000, // 10,000 meters = 10km
+                        color: '#0ea5e9', 
+                        weight: 1, 
+                        opacity: 0.3, 
+                        fillColor: '#0ea5e9',
+                        fillOpacity: 0.05, 
+                        interactive: false 
+                    }).addTo(ewsBuffers);
+                }
+            }
+        });
+
+        // Hide buffer instantly when popup is closed
+        map.on('popupclose', function() {
+            ewsBuffers.clearLayers();
+        });
+
     </script>
 </body>
 </html>
